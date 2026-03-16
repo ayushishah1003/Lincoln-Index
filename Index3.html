@@ -1,0 +1,611 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lincoln Index Simulation — IB ESS</title>
+<link href="https://fonts.googleapis.com/css2?family=Crimson+Pro:ital,wght@0,300;0,400;0,600;1,400&family=DM+Mono:wght@400;500&family=Space+Grotesk:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --forest: #1c3a2e; --forest-light: #3d7a5f; --moss: #4a8c6a;
+    --sage: #7ab899; --mint: #b8dbc9; --cream: #f5f0e8;
+    --amber: #d4860a; --amber-light: #f0a830;
+    --teal: #1a7b8a; --coral: #c8503a;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Space Grotesk', sans-serif; background: var(--forest); color: var(--cream); min-height: 100vh; overflow-x: hidden; }
+  .page-wrap { max-width: 1100px; margin: 0 auto; padding: 0 24px 60px; }
+
+  .hero { padding: 48px 0 36px; display: flex; align-items: flex-end; gap: 32px; border-bottom: 1px solid rgba(255,255,255,0.1); margin-bottom: 40px; flex-wrap: wrap; }
+  .hero-text h1 { font-family: 'Crimson Pro', serif; font-size: 52px; font-weight: 300; line-height: 1.1; color: var(--mint); }
+  .hero-text h1 em { font-style: italic; color: var(--amber-light); }
+  .hero-text .subtitle { font-size: 13px; color: var(--sage); letter-spacing: 2px; text-transform: uppercase; margin-bottom: 8px; }
+  .hero-badge { background: var(--amber); color: #fff; font-size: 11px; font-weight: 500; letter-spacing: 1.5px; text-transform: uppercase; padding: 4px 10px; border-radius: 3px; display: inline-block; margin-top: 12px; }
+  .hero-formula { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 20px 28px; text-align: center; flex-shrink: 0; }
+  .hero-formula .f-label { font-size: 11px; color: var(--sage); letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 10px; }
+  .hero-formula .f-eq { font-family: 'Crimson Pro', serif; font-size: 32px; font-weight: 300; color: var(--amber-light); }
+  .hero-formula .f-sub { font-size: 12px; color: var(--mint); margin-top: 8px; font-family: 'DM Mono', monospace; }
+
+  .card { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 16px; padding: 28px; }
+  .card-title { font-size: 11px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; color: var(--sage); margin-bottom: 20px; display: flex; align-items: center; gap: 8px; }
+  .step-num { width: 22px; height: 22px; background: var(--moss); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 600; color: var(--cream); flex-shrink: 0; }
+
+  .sim-grid { display: grid; grid-template-columns: 1fr 360px; gap: 24px; }
+  @media (max-width: 820px) { .sim-grid { grid-template-columns: 1fr; } }
+
+  .habitat-wrap { border-radius: 16px; overflow: hidden; border: 1px solid rgba(255,255,255,0.08); }
+  #habitat { width: 100%; display: block; }
+
+  .control-group { margin-bottom: 20px; }
+  .control-label { font-size: 12px; color: var(--mint); margin-bottom: 6px; display: flex; justify-content: space-between; }
+  .control-value { color: var(--amber-light); font-family: 'DM Mono', monospace; font-weight: 500; }
+  input[type=range] { width: 100%; height: 4px; -webkit-appearance: none; background: rgba(255,255,255,0.12); border-radius: 2px; outline: none; cursor: pointer; }
+  input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 16px; height: 16px; border-radius: 50%; background: var(--amber-light); cursor: pointer; }
+
+  .btn { font-family: 'Space Grotesk', sans-serif; font-size: 13px; font-weight: 500; border: none; border-radius: 8px; cursor: pointer; transition: all 0.15s; padding: 10px 20px; }
+  .btn:active { transform: scale(0.97); }
+  .btn-primary { background: var(--moss); color: var(--cream); }
+  .btn-primary:hover { background: var(--forest-light); }
+  .btn-primary:disabled { opacity: 0.35; cursor: not-allowed; transform: none; }
+  .btn-amber { background: var(--amber); color: #fff; }
+  .btn-amber:hover { background: #b87209; }
+  .btn-amber:disabled { opacity: 0.35; cursor: not-allowed; transform: none; }
+  .btn-teal { background: var(--teal); color: #fff; }
+  .btn-teal:hover { background: #145f6b; }
+  .btn-teal:disabled { opacity: 0.35; cursor: not-allowed; transform: none; }
+  .btn-ghost { background: transparent; color: var(--sage); border: 1px solid rgba(255,255,255,0.15); }
+  .btn-ghost:hover { background: rgba(255,255,255,0.05); }
+  .btn-row { display: flex; gap: 8px; flex-wrap: wrap; }
+
+  .steps-bar { display: flex; align-items: center; margin-bottom: 24px; }
+  .step-dot { width: 28px; height: 28px; border-radius: 50%; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 600; color: rgba(255,255,255,0.3); transition: all 0.3s; flex-shrink: 0; }
+  .step-dot.active { background: var(--amber); border-color: var(--amber); color: #fff; }
+  .step-dot.done { background: var(--moss); border-color: var(--moss); color: var(--cream); }
+  .step-line { flex: 1; height: 1px; background: rgba(255,255,255,0.1); transition: background 0.3s; }
+  .step-line.done { background: var(--moss); }
+
+  .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px; }
+  @media (max-width: 600px) { .stats-grid { grid-template-columns: repeat(2, 1fr); } }
+  .stat-box { background: rgba(0,0,0,0.25); border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; padding: 12px 14px; }
+  .stat-label { font-size: 10px; color: var(--sage); letter-spacing: 1px; text-transform: uppercase; margin-bottom: 4px; }
+  .stat-val { font-family: 'DM Mono', monospace; font-size: 24px; font-weight: 500; color: var(--cream); }
+  .stat-val.hl { color: var(--amber-light); }
+  .stat-formula { font-size: 10px; color: rgba(255,255,255,0.22); margin-top: 3px; font-family: 'DM Mono', monospace; }
+
+  .result-banner { border-radius: 12px; padding: 20px; margin-top: 16px; display: none; }
+  .result-banner.show { display: block; }
+  .result-banner.excellent { background: rgba(74,140,106,0.2); border: 1px solid var(--moss); }
+  .result-banner.goodr { background: rgba(212,134,10,0.15); border: 1px solid var(--amber); }
+  .result-banner.poor { background: rgba(200,80,58,0.15); border: 1px solid var(--coral); }
+  .result-heading { font-family: 'Crimson Pro', serif; font-size: 22px; font-weight: 400; margin-bottom: 6px; }
+  .result-text { font-size: 13px; color: var(--mint); line-height: 1.6; }
+  .acc-bar-labels { display: flex; justify-content: space-between; font-size: 11px; color: var(--sage); margin: 12px 0 4px; }
+  .acc-bar-track { height: 8px; background: rgba(255,255,255,0.08); border-radius: 4px; overflow: hidden; }
+  .acc-bar-fill { height: 100%; border-radius: 4px; width: 0%; transition: width 0.8s cubic-bezier(0.4,0,0.2,1), background 0.5s; }
+
+  .assumption-list { display: flex; flex-direction: column; gap: 10px; }
+  .assumption-item { display: flex; align-items: flex-start; gap: 12px; padding: 12px 14px; background: rgba(0,0,0,0.2); border-radius: 10px; border: 1px solid rgba(255,255,255,0.06); }
+  .ass-icon { width: 20px; height: 20px; border-radius: 50%; flex-shrink: 0; margin-top: 1px; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; }
+  .ass-icon.met { background: var(--moss); color: var(--cream); }
+  .ass-icon.unmet { background: var(--coral); color: #fff; }
+  .assumption-title { font-size: 13px; font-weight: 500; color: var(--cream); margin-bottom: 2px; }
+  .assumption-desc { font-size: 11px; color: var(--sage); line-height: 1.5; }
+
+  .history-table { width: 100%; border-collapse: collapse; font-size: 12px; font-family: 'DM Mono', monospace; }
+  .history-table th { text-align: left; padding: 6px 8px; font-size: 10px; letter-spacing: 1px; text-transform: uppercase; color: var(--sage); border-bottom: 1px solid rgba(255,255,255,0.1); font-family: 'Space Grotesk', sans-serif; }
+  .history-table td { padding: 6px 8px; color: var(--mint); border-bottom: 1px solid rgba(255,255,255,0.04); }
+  .eg { color: var(--sage); } .eo { color: var(--amber-light); } .eb { color: #e07070; }
+
+  .limit-list { display: flex; flex-direction: column; gap: 8px; }
+  .limit-item { display: flex; gap: 10px; font-size: 12px; line-height: 1.5; color: var(--mint); padding: 10px 12px; background: rgba(0,0,0,0.2); border-radius: 8px; border-left: 2px solid var(--coral); }
+  .li-dot { flex-shrink: 0; width: 8px; height: 8px; border-radius: 50%; background: var(--coral); margin-top: 4px; }
+
+  #phase-msg { font-size: 13px; color: var(--sage); font-style: italic; margin-top: 10px; min-height: 20px; }
+
+  .legend { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 12px; }
+  .legend-item { display: flex; align-items: center; gap: 8px; font-size: 11px; color: var(--sage); }
+
+  .tab-nav { display: flex; gap: 4px; border-bottom: 1px solid rgba(255,255,255,0.1); margin-bottom: 20px; }
+  .tab-btn { font-family: 'Space Grotesk', sans-serif; font-size: 12px; font-weight: 500; border: none; background: transparent; color: var(--sage); padding: 8px 14px; cursor: pointer; border-bottom: 2px solid transparent; transition: all 0.15s; margin-bottom: -1px; }
+  .tab-btn.active { color: var(--amber-light); border-bottom-color: var(--amber-light); }
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+
+  .section-divider { display: flex; align-items: center; gap: 16px; margin: 32px 0; }
+  .section-divider hr { flex: 1; border: none; border-top: 1px solid rgba(255,255,255,0.08); }
+  .section-divider span { font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: var(--sage); flex-shrink: 0; }
+</style>
+</head>
+<body>
+<div class="page-wrap">
+
+<header class="hero">
+  <div class="hero-text">
+    <div class="subtitle">IB Environmental Systems &amp; Societies</div>
+    <h1>Lincoln Index<br><em>Simulation</em></h1>
+    <div class="hero-badge">Capture · Mark · Recapture</div>
+  </div>
+  <div class="hero-formula">
+    <div class="f-label">The Formula</div>
+    <div class="f-eq">N = (n₁ × n₂) ÷ m</div>
+    <div class="f-sub">n₁ = 1st capture &nbsp;|&nbsp; n₂ = 2nd capture<br>m = recaptured marked &nbsp;|&nbsp; N = population</div>
+  </div>
+</header>
+
+<div class="sim-grid">
+  <div>
+    <div class="steps-bar">
+      <div class="step-dot active" id="sd1">1</div><div class="step-line" id="sl1"></div>
+      <div class="step-dot" id="sd2">2</div><div class="step-line" id="sl2"></div>
+      <div class="step-dot" id="sd3">3</div><div class="step-line" id="sl3"></div>
+      <div class="step-dot" id="sd4">4</div><div class="step-line" id="sl4"></div>
+      <div class="step-dot" id="sd5">5</div>
+    </div>
+
+    <div class="habitat-wrap">
+      <svg id="habitat" viewBox="0 0 600 320" xmlns="http://www.w3.org/2000/svg"></svg>
+    </div>
+
+    <div class="legend">
+      <div class="legend-item"><svg width="32" height="22" viewBox="-16 -11 32 22"><g id="leg-normal"></g></svg>Unmarked rabbit</div>
+      <div class="legend-item"><svg width="32" height="22" viewBox="-16 -11 32 22"><g id="leg-marked"></g></svg>Ear-tagged</div>
+      <div class="legend-item"><svg width="32" height="22" viewBox="-16 -11 32 22"><g id="leg-recaptured"></g></svg>Recaptured tagged</div>
+      <div class="legend-item"><svg width="32" height="22" viewBox="-16 -11 32 22"><g id="leg-new"></g></svg>Newly caught</div>
+    </div>
+
+    <div id="phase-msg">Set your parameters and press "Start Simulation" to begin.</div>
+
+    <div class="stats-grid" style="margin-top:16px">
+      <div class="stat-box"><div class="stat-label">n₁ — 1st catch</div><div class="stat-val" id="stat-n1">—</div><div class="stat-formula">marked &amp; released</div></div>
+      <div class="stat-box"><div class="stat-label">n₂ — 2nd catch</div><div class="stat-val" id="stat-n2">—</div><div class="stat-formula">total recaptured</div></div>
+      <div class="stat-box"><div class="stat-label">m — marked</div><div class="stat-val" id="stat-m">—</div><div class="stat-formula">in 2nd sample</div></div>
+      <div class="stat-box"><div class="stat-label">N — estimate</div><div class="stat-val hl" id="stat-N">—</div><div class="stat-formula">n₁ × n₂ ÷ m</div></div>
+    </div>
+
+    <div class="btn-row" style="margin-top:16px">
+      <button class="btn btn-primary" id="btn-start">▶ Start</button>
+      <button class="btn btn-amber" id="btn-c1" disabled>Capture &amp; Mark</button>
+      <button class="btn btn-teal" id="btn-c2" disabled>2nd Capture</button>
+      <button class="btn btn-ghost" id="btn-reset">↺ Reset</button>
+    </div>
+
+    <div class="result-banner" id="rbanner">
+      <div class="result-heading" id="rheading"></div>
+      <div class="result-text" id="rtext"></div>
+      <div class="acc-bar-labels"><span>Accuracy</span><span id="acc-pct">—</span></div>
+      <div class="acc-bar-track"><div class="acc-bar-fill" id="acc-bar"></div></div>
+    </div>
+  </div>
+
+  <!-- Right panel -->
+  <div>
+    <div class="card">
+      <div class="card-title"><div class="step-num">⚙</div>Parameters</div>
+      <div class="control-group">
+        <div class="control-label">Actual Population <span class="control-value" id="v-pop">60</span></div>
+        <input type="range" min="20" max="120" value="60" oninput="updateSlider('pop',this.value)">
+      </div>
+      <div class="control-group">
+        <div class="control-label">1st Capture Size <span class="control-value" id="v-n1">15</span></div>
+        <input type="range" min="4" max="50" value="15" oninput="updateSlider('n1',this.value)">
+      </div>
+      <div class="control-group">
+        <div class="control-label">2nd Capture Size <span class="control-value" id="v-n2">15</span></div>
+        <input type="range" min="4" max="50" value="15" oninput="updateSlider('n2',this.value)">
+      </div>
+      <div class="control-group" style="margin-bottom:0">
+        <div class="control-label">Speed <span class="control-value" id="v-speed">Normal</span></div>
+        <input type="range" min="1" max="3" value="2" oninput="updateSpeed(this.value)">
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:16px">
+      <div class="tab-nav">
+        <button class="tab-btn active" onclick="switchTab('assumptions')">Assumptions</button>
+        <button class="tab-btn" onclick="switchTab('limitations')">Limitations</button>
+        <button class="tab-btn" onclick="switchTab('history')">History</button>
+      </div>
+
+      <div class="tab-panel active" id="tab-assumptions">
+        <div class="assumption-list">
+          <div class="assumption-item"><div class="ass-icon met" id="ai-1">✓</div><div><div class="assumption-title">Random mixing</div><div class="assumption-desc">Tagged rabbits redistribute randomly before recapture.</div></div></div>
+          <div class="assumption-item"><div class="ass-icon met" id="ai-2">✓</div><div><div class="assumption-title">Equal capture probability</div><div class="assumption-desc">Every rabbit — tagged or not — is equally catchable.</div></div></div>
+          <div class="assumption-item"><div class="ass-icon met" id="ai-3">✓</div><div><div class="assumption-title">Closed population</div><div class="assumption-desc">No births, deaths, or migration between samples.</div></div></div>
+          <div class="assumption-item"><div class="ass-icon met" id="ai-4">✓</div><div><div class="assumption-title">Marks retained &amp; visible</div><div class="assumption-desc">Ear tags are not lost and are clearly visible.</div></div></div>
+          <div class="assumption-item"><div class="ass-icon met" id="ai-5">✓</div><div><div class="assumption-title">Marking has no effect</div><div class="assumption-desc">Tags don't alter survival, behaviour, or catchability.</div></div></div>
+        </div>
+      </div>
+
+      <div class="tab-panel" id="tab-limitations">
+        <div style="font-size:13px;color:var(--mint);line-height:1.6;margin-bottom:12px">Real-world violations introduce error:</div>
+        <div class="limit-list">
+          <div class="limit-item"><div class="li-dot"></div><div><strong>Trap-shyness</strong> — previously caught rabbits avoid traps → fewer recaptures → <em>overestimates N</em>.</div></div>
+          <div class="limit-item"><div class="li-dot"></div><div><strong>Marking stress</strong> — ear-tagging may injure or stress animals, reducing marked individuals' survival.</div></div>
+          <div class="limit-item"><div class="li-dot"></div><div><strong>Open population</strong> — births, deaths, or migration between samples distort the ratio.</div></div>
+          <div class="limit-item"><div class="li-dot"></div><div><strong>Patchy distribution</strong> — marked rabbits clustering in one area biases recapture rates.</div></div>
+          <div class="limit-item"><div class="li-dot"></div><div><strong>Small m bias</strong> — tiny m values make N̂ extremely sensitive to random error.</div></div>
+        </div>
+      </div>
+
+      <div class="tab-panel" id="tab-history">
+        <div style="font-size:12px;color:var(--sage);margin-bottom:12px">Run multiple trials to explore variability.</div>
+        <div style="overflow-x:auto">
+          <table class="history-table">
+            <thead><tr><th>Trial</th><th>Actual</th><th>n₁</th><th>n₂</th><th>m</th><th>N̂</th><th>Error</th></tr></thead>
+            <tbody id="history-body"><tr><td colspan="7" style="color:var(--sage);font-family:'Space Grotesk',sans-serif;font-size:12px;padding:12px 8px">No trials yet.</td></tr></tbody>
+          </table>
+        </div>
+        <div id="avg-row" style="display:none;margin-top:10px;font-size:12px;color:var(--sage)">
+          Avg error: <span id="avg-err" style="color:var(--amber-light);font-family:'DM Mono',monospace"></span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section-divider"><hr><span>Concept Review</span><hr></div>
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px">
+  <div class="card"><div class="card-title"><div class="step-num" style="background:var(--teal)">1</div>First Capture (n₁)</div><div style="font-size:13px;color:var(--mint);line-height:1.6">Rabbits are caught with live traps. Each individual receives an <strong style="color:var(--amber-light)">ear tag</strong> and is released unharmed. The tag must be clearly visible but must not impair movement or attract predators.</div></div>
+  <div class="card"><div class="card-title"><div class="step-num" style="background:var(--amber)">2</div>Mixing Period</div><div style="font-size:13px;color:var(--mint);line-height:1.6">A <strong style="color:var(--amber-light)">waiting period</strong> lets tagged rabbits re-integrate randomly. Too short a wait causes spatial bias — marked individuals cluster near the release point.</div></div>
+  <div class="card"><div class="card-title"><div class="step-num" style="background:var(--teal)">3</div>Second Capture (n₂ &amp; m)</div><div style="font-size:13px;color:var(--mint);line-height:1.6">A second sample is taken. Each rabbit is checked for an ear tag. The proportion of <strong style="color:var(--amber-light)">tagged (m)</strong> mirrors the proportion in the whole population — this is the key ratio.</div></div>
+  <div class="card"><div class="card-title"><div class="step-num" style="background:var(--moss)">4</div>Calculating N</div><div style="font-size:13px;color:var(--mint);line-height:1.6">Since m/n₂ = n₁/N, rearranging gives:<br><span style="font-family:'Crimson Pro',serif;font-size:20px;color:var(--amber-light);display:block;text-align:center;margin:10px 0">N = (n₁ × n₂) ÷ m</span>More tagged rabbits in the 2nd sample → smaller population estimate.</div></div>
+</div>
+
+</div><!-- /page-wrap -->
+
+<script>
+const NS = 'http://www.w3.org/2000/svg';
+const svg = document.getElementById('habitat');
+const W = 600, H = 320;
+
+let animals = [], state = 'idle', trialHistory = [], speed = 1;
+let actualN = 60, n1Size = 15, n2Size = 15;
+let cap1 = [], cap2 = [], m = 0, estN = null, trialNum = 0;
+
+// ─── SVG helpers ─────────────────────────────────────────────────
+function el(tag, attrs) {
+  const e = document.createElementNS(NS, tag);
+  for (const [k,v] of Object.entries(attrs)) e.setAttribute(k, v);
+  return e;
+}
+
+// ─── Draw one rabbit into a <g> at origin, facing right ──────────
+// states: 'normal' | 'marked' | 'captured_new' | 'recaptured'
+function buildRabbit(g, st) {
+  const isNormal = st === 'normal';
+  const isMarked = st === 'marked';
+  const isNew    = st === 'captured_new';
+  const isRecap  = st === 'recaptured';
+
+  const fur    = isRecap ? '#c07820' : isNew ? '#3a9ab5' : '#b8906a';
+  const dark   = isRecap ? '#8a5510' : isNew ? '#1a6a80' : '#8a6040';
+  const belly  = isRecap ? '#e8c060' : isNew ? '#6abdd4' : '#d4b08a';
+  const tag    = isMarked || isRecap;
+
+  // glow ring for active captures
+  if (isNew || isRecap) {
+    const gCol = isRecap ? 'rgba(240,168,48,0.55)' : 'rgba(58,154,181,0.55)';
+    g.appendChild(el('circle',{cx:0,cy:0,r:16,fill:'none',stroke:gCol,'stroke-width':2.5,'stroke-dasharray':'4 3'}));
+  }
+
+  // tail
+  g.appendChild(el('ellipse',{cx:-12,cy:3,rx:4,ry:3,fill:'#e8dcc8'}));
+
+  // back foot
+  g.appendChild(el('ellipse',{cx:-7,cy:9,rx:5.5,ry:2,fill:dark}));
+  // front foot
+  g.appendChild(el('ellipse',{cx:1,cy:9,rx:4.5,ry:2,fill:dark}));
+
+  // body
+  g.appendChild(el('ellipse',{cx:-3,cy:2,rx:10,ry:6.5,fill:fur}));
+  // belly
+  g.appendChild(el('ellipse',{cx:-4,cy:4,rx:7,ry:3.5,fill:belly,opacity:0.55}));
+
+  // neck connect
+  g.appendChild(el('ellipse',{cx:5,cy:1,rx:4.5,ry:4.2,fill:fur}));
+
+  // head
+  g.appendChild(el('circle',{cx:8,cy:-1,r:5.8,fill:fur}));
+
+  // back ear
+  const be = el('ellipse',{cx:5.5,cy:-11,rx:2.2,ry:6.2,fill:dark});
+  be.setAttribute('transform','rotate(-15 5.5 -5)');
+  g.appendChild(be);
+
+  // front ear outer
+  const fe = el('ellipse',{cx:9,cy:-12,rx:2.2,ry:6.2,fill:fur});
+  fe.setAttribute('transform','rotate(4 9 -6)');
+  g.appendChild(fe);
+
+  // front ear inner
+  const fi = el('ellipse',{cx:9,cy:-12,rx:1.1,ry:4,fill:'#d49898'});
+  fi.setAttribute('transform','rotate(4 9 -6)');
+  g.appendChild(fi);
+
+  // eye
+  g.appendChild(el('circle',{cx:11,cy:-2.2,r:1.3,fill:'#1a0a04'}));
+  g.appendChild(el('circle',{cx:11.5,cy:-2.8,r:0.5,fill:'#ffffff'}));
+
+  // nose
+  g.appendChild(el('ellipse',{cx:13.4,cy:0.8,rx:1.2,ry:0.85,fill:'#d08090'}));
+
+  // whiskers
+  [[13,0,18,-1.5],[13,0.8,18,0.8],[13,1.5,18,2.5]].forEach(([x1,y1,x2,y2])=>{
+    g.appendChild(el('line',{x1,y1,x2,y2,stroke:'rgba(255,255,255,0.45)','stroke-width':0.6}));
+  });
+
+  // ear tag
+  if (tag) {
+    const tr = el('rect',{x:7.5,y:-17,width:5.5,height:3.5,rx:1,fill:'#f0a830',stroke:'#c07808','stroke-width':0.8});
+    tr.setAttribute('transform','rotate(4 9 -6)');
+    g.appendChild(tr);
+    const th = el('circle',{cx:9,cy:-16.5,r:0.6,fill:'#1a1004'});
+    th.setAttribute('transform','rotate(4 9 -6)');
+    g.appendChild(th);
+  }
+}
+
+function renderAnimal(a) {
+  const old = document.getElementById(`a${a.id}`);
+  if (old) old.remove();
+  const g = el('g',{id:`a${a.id}`,transform:`translate(${a.x.toFixed(1)},${a.y.toFixed(1)})`});
+  buildRabbit(g, a.state);
+  svg.appendChild(g);
+}
+
+function renderLegend() {
+  [['leg-normal','normal'],['leg-marked','marked'],['leg-recaptured','recaptured'],['leg-new','captured_new']].forEach(([id,st])=>{
+    const g = document.getElementById(id);
+    g.innerHTML = '';
+    buildRabbit(g, st);
+  });
+}
+
+// ─── Habitat background ───────────────────────────────────────────
+function drawHabitat() {
+  svg.innerHTML = '';
+  // base ground
+  svg.appendChild(el('rect',{x:0,y:0,width:W,height:H,fill:'#0d2518'}));
+
+  // ground tone patches
+  [{cx:300,cy:260,rx:270,ry:100,fill:'#183520'},{cx:100,cy:280,rx:160,ry:70,fill:'#1d3d22'},{cx:480,cy:270,rx:180,ry:65,fill:'#173220'}]
+    .forEach(a=>svg.appendChild(el('ellipse',a)));
+
+  // dirt patches
+  [{cx:200,cy:200,rx:30,ry:16,fill:'#1a1408',opacity:0.4},{cx:420,cy:185,rx:22,ry:12,fill:'#1a1408',opacity:0.35},{cx:80,cy:230,rx:18,ry:10,fill:'#1a1408',opacity:0.3}]
+    .forEach(a=>svg.appendChild(el('ellipse',a)));
+
+  // rocks
+  [{cx:310,cy:248,rx:9,ry:5},{cx:425,cy:252,rx:6,ry:4},{cx:155,cy:240,rx:7,ry:4}]
+    .forEach(({cx,cy,rx,ry})=>svg.appendChild(el('ellipse',{cx,cy,rx,ry,fill:'#3a3a2e',opacity:0.7})));
+
+  // bushes
+  [[70,240,24,15],[490,244,26,15],[220,238,18,11],[370,242,22,14],[540,252,18,11]]
+    .forEach(([bx,by,bw,bh])=>{
+      svg.appendChild(el('ellipse',{cx:bx,cy:by,rx:bw,ry:bh,fill:'#1e4828'}));
+      svg.appendChild(el('ellipse',{cx:bx+bw*0.5,cy:by-2,rx:bw*0.7,ry:bh*0.8,fill:'#28603a'}));
+      svg.appendChild(el('ellipse',{cx:bx-bw*0.4,cy:by-1,rx:bw*0.55,ry:bh*0.7,fill:'#255535'}));
+    });
+
+  // grass tufts
+  const gSeeds = [
+    [40,258],[110,272],[200,260],[295,268],[380,255],[465,270],[545,260],
+    [70,290],[150,285],[250,295],[340,288],[430,292],[510,282],[570,296],
+    [25,310],[100,304],[195,312],[280,308],[365,302],[455,310],[540,306]
+  ];
+  gSeeds.forEach(([gx,gy])=>{
+    const h = 7 + Math.random()*9, sp = 4 + Math.random()*5;
+    const col = Math.random()>0.5 ? '#2a5c38' : '#346840';
+    [-1,0,1].forEach(i=>{
+      const jx = (Math.random()-0.5)*3;
+      svg.appendChild(el('path',{
+        d:`M${gx+i*sp*0.5},${gy} Q${gx+i*sp*0.9+jx},${gy-h*0.55} ${gx+i*sp},${gy-h}`,
+        fill:'none',stroke:col,'stroke-width':1.6,'stroke-linecap':'round'
+      }));
+    });
+  });
+
+  // label
+  const lbl = el('text',{x:8,y:H-6,'font-family':'Space Grotesk,sans-serif','font-size':9,fill:'rgba(255,255,255,0.18)','letter-spacing':2});
+  lbl.textContent = 'SIMULATED MEADOW HABITAT';
+  svg.appendChild(lbl);
+}
+
+// ─── Helpers ──────────────────────────────────────────────────────
+const delay = ms => new Promise(r=>setTimeout(r, ms/speed));
+const msg = t => { document.getElementById('phase-msg').textContent = t; };
+function setSteps(cur) {
+  for (let i=1;i<=5;i++) {
+    document.getElementById(`sd${i}`).className='step-dot'+(i<cur?' done':i===cur?' active':'');
+    if (i<5) document.getElementById(`sl${i}`).className='step-line'+(i<cur?' done':'');
+  }
+}
+function setStats(n1,n2,mk,est) {
+  const s=(id,v)=>{document.getElementById(id).textContent=v===null?'—':v;};
+  s('stat-n1',n1);s('stat-n2',n2);s('stat-m',mk);s('stat-N',est===null?'—':est);
+}
+function randPos(mg=22) {
+  return {x:mg+Math.random()*(W-mg*2), y:mg+Math.random()*(H-90)};
+}
+
+// ─── Slider / speed ───────────────────────────────────────────────
+function updateSlider(k,v) {
+  if (k==='pop'){actualN=+v;document.getElementById('v-pop').textContent=v;}
+  if (k==='n1'){n1Size=+v;document.getElementById('v-n1').textContent=v;}
+  if (k==='n2'){n2Size=+v;document.getElementById('v-n2').textContent=v;}
+}
+function updateSpeed(v) {
+  speed=+v;
+  document.getElementById('v-speed').textContent=['','Slow','Normal','Fast'][v];
+}
+
+// ─── Spawn ────────────────────────────────────────────────────────
+function spawnAnimals() {
+  drawHabitat();
+  animals = [];
+  for (let i=0;i<actualN;i++) {
+    const p = randPos();
+    const a = {id:i, x:p.x, y:p.y, state:'normal', marked:false};
+    animals.push(a);
+    renderAnimal(a);
+  }
+}
+
+function move(count) {
+  [...animals].sort(()=>Math.random()-0.5).slice(0,count).forEach(a=>{
+    const p=randPos(); a.x=p.x; a.y=p.y;
+    const g=document.getElementById(`a${a.id}`);
+    if(g) g.setAttribute('transform',`translate(${a.x.toFixed(1)},${a.y.toFixed(1)})`);
+  });
+}
+
+// ─── Start ────────────────────────────────────────────────────────
+async function startSim() {
+  state='running';
+  document.getElementById('btn-start').disabled=true;
+  document.getElementById('btn-c1').disabled=true;
+  document.getElementById('btn-c2').disabled=true;
+  document.getElementById('rbanner').className='result-banner';
+  cap1=[]; cap2=[]; m=0; estN=null;
+  setStats(null,null,null,null);
+  setSteps(1);
+  msg('Spawning rabbit population in meadow…');
+  spawnAnimals();
+  await delay(600);
+  setSteps(2);
+  msg(`Step 1: Click "Capture & Mark" to catch ${n1Size} rabbits.`);
+  document.getElementById('btn-c1').disabled=false;
+}
+
+// ─── Capture 1 ────────────────────────────────────────────────────
+async function doC1() {
+  document.getElementById('btn-c1').disabled=true;
+  msg(`Catching ${n1Size} rabbits…`);
+  cap1 = [...animals].sort(()=>Math.random()-0.5).slice(0, Math.min(n1Size,animals.length));
+  cap1.forEach(a=>{a.state='captured_new'; renderAnimal(a);});
+  await delay(800);
+  msg('Fitting ear tags and releasing back into habitat…');
+  cap1.forEach(a=>{a.marked=true; a.state='marked'; renderAnimal(a);});
+  await delay(700);
+  setStats(cap1.length,null,null,null);
+  setSteps(3);
+  msg('Mixing period: tagged rabbits redistributing randomly…');
+  for(let i=0;i<4;i++){move(Math.floor(animals.length*0.45)); await delay(340);}
+  setSteps(4);
+  msg(`Mixing complete. Click "2nd Capture" to sample ${n2Size} rabbits.`);
+  document.getElementById('btn-c2').disabled=false;
+}
+
+// ─── Capture 2 ────────────────────────────────────────────────────
+async function doC2() {
+  document.getElementById('btn-c2').disabled=true;
+  msg(`Taking second sample of ${n2Size} rabbits…`);
+  cap2 = [...animals].sort(()=>Math.random()-0.5).slice(0, Math.min(n2Size,animals.length));
+  cap2.forEach(a=>{a.state=a.marked?'recaptured':'captured_new'; renderAnimal(a);});
+  await delay(700);
+  m = cap2.filter(a=>a.marked).length;
+  setStats(cap1.length,cap2.length,m,null);
+  setSteps(5);
+  msg('Calculating Lincoln Index…');
+  await delay(500);
+
+  if(m===0){
+    msg('⚠ m = 0: no tagged rabbits recaptured. Increase sample sizes.');
+    setStats(cap1.length,cap2.length,0,'∞');
+    showResult(null);
+  } else {
+    estN = Math.round((cap1.length*cap2.length)/m);
+    setStats(cap1.length,cap2.length,m,estN);
+    msg(`N = (${cap1.length} × ${cap2.length}) ÷ ${m} = ${estN}  (actual: ${actualN})`);
+    showResult(estN);
+    addHistory(cap1.length,cap2.length,m,estN);
+  }
+
+  await delay(400);
+  cap2.forEach(a=>{a.state=a.marked?'marked':'normal'; renderAnimal(a);});
+  document.getElementById('btn-start').disabled=false;
+  state='idle';
+}
+
+// ─── Result ───────────────────────────────────────────────────────
+function showResult(est) {
+  const b=document.getElementById('rbanner');
+  if(est===null){
+    b.className='result-banner poor show';
+    document.getElementById('rheading').textContent='No tagged rabbits recaptured';
+    document.getElementById('rtext').textContent='Increase n₁ or n₂ to improve recapture probability.';
+    document.getElementById('acc-pct').textContent='—';
+    document.getElementById('acc-bar').style.width='0%';
+    return;
+  }
+  const err=Math.abs(est-actualN)/actualN*100;
+  const acc=Math.max(0,100-err);
+  document.getElementById('acc-pct').textContent=acc.toFixed(1)+'%';
+  document.getElementById('acc-bar').style.width=acc+'%';
+  let cls,heading,text;
+  if(err<=10){
+    cls='excellent';heading=`Excellent — ${est} vs actual ${actualN}`;
+    text=`Only ${err.toFixed(1)}% error. Sample sizes were well-proportioned and assumptions held. A reliable Lincoln Index result.`;
+    document.getElementById('acc-bar').style.background='#4a8c6a';
+  } else if(err<=25){
+    cls='goodr';heading=`Reasonable — ${est} vs actual ${actualN}`;
+    text=`${err.toFixed(1)}% error. Sampling variability is expected. Larger n₁/n₂ or repeated trials reduce this.`;
+    document.getElementById('acc-bar').style.background='#d4860a';
+  } else {
+    cls='poor';heading=`High error — ${est} vs actual ${actualN}`;
+    text=`${err.toFixed(1)}% error. A small m value is likely the cause — tiny m makes N̂ very sensitive to chance. Try larger samples.`;
+    document.getElementById('acc-bar').style.background='#c8503a';
+  }
+  b.className=`result-banner ${cls} show`;
+  document.getElementById('rheading').textContent=heading;
+  document.getElementById('rtext').textContent=text;
+}
+
+// ─── History ──────────────────────────────────────────────────────
+function addHistory(n1,n2,mk,est){
+  trialNum++;
+  const err=Math.abs(est-actualN)/actualN*100;
+  const cls=err<=10?'eg':err<=25?'eo':'eb';
+  const tbody=document.getElementById('history-body');
+  if(trialNum===1)tbody.innerHTML='';
+  const tr=document.createElement('tr');
+  tr.innerHTML=`<td>${trialNum}</td><td>${actualN}</td><td>${n1}</td><td>${n2}</td><td>${mk}</td><td>${est}</td><td class="${cls}">${err.toFixed(1)}%</td>`;
+  tbody.appendChild(tr);
+  trialHistory.push(err);
+  const avg=trialHistory.reduce((a,b)=>a+b,0)/trialHistory.length;
+  document.getElementById('avg-row').style.display='block';
+  document.getElementById('avg-err').textContent=avg.toFixed(1)+'% across '+trialHistory.length+' trial'+(trialHistory.length>1?'s':'');
+}
+
+// ─── Reset ────────────────────────────────────────────────────────
+function resetSim(){
+  state='idle'; animals=[]; cap1=[]; cap2=[]; m=0; estN=null;
+  document.getElementById('btn-start').disabled=false;
+  document.getElementById('btn-c1').disabled=true;
+  document.getElementById('btn-c2').disabled=true;
+  document.getElementById('rbanner').className='result-banner';
+  setStats(null,null,null,null);
+  setSteps(1);
+  msg('Set your parameters and press "Start Simulation" to begin.');
+  drawHabitat();
+}
+
+// ─── Tabs ─────────────────────────────────────────────────────────
+function switchTab(name){
+  const ns=['assumptions','limitations','history'];
+  document.querySelectorAll('.tab-btn').forEach((b,i)=>b.classList.toggle('active',ns[i]===name));
+  document.querySelectorAll('.tab-panel').forEach(p=>p.classList.toggle('active',p.id===`tab-${name}`));
+}
+
+// ─── Events ───────────────────────────────────────────────────────
+document.getElementById('btn-start').addEventListener('click', startSim);
+document.getElementById('btn-c1').addEventListener('click', doC1);
+document.getElementById('btn-c2').addEventListener('click', doC2);
+document.getElementById('btn-reset').addEventListener('click', resetSim);
+
+// ─── Init ─────────────────────────────────────────────────────────
+drawHabitat();
+renderLegend();
+</script>
+</body>
+</html>
